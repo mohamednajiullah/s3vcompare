@@ -34,3 +34,4 @@ and now you can run the script like a program from anywhere.
 `s3vcompare bucket_name folder/filename.extension` 
  
  #### Pull requests are welcome
+ 
