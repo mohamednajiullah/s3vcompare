@@ -1,0 +1,77 @@
+#!/bin/bash
+
+#This script needs awscli, jq and colordiff. Please install them for your environment
+
+#This script also needs the AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_DEFAULT_REGION.
+
+#Please set them using the export command as follows or set them using envrc
+#export AWS_ACCESS_KEY_ID=<Your AWS Access Key ID>
+#export AWS_SECRET_ACCESS_KEY=<Your AWS Secret Access Key>
+#export AWS_DEFAULT_REGION=<Your AWS Default Region>
+
+set -e
+
+if [ -z $1 ] || [ -z $2 ]; then
+echo "Usage:"
+echo "version_compare.sh *bucket_name* *file_name*"
+echo
+echo "Example"
+echo "version_compare.sh bucket_name folder/filename.extension"
+echo
+exit 1;
+fi
+
+
+aws_bucket=$1
+file_key=$2
+
+echo Getting the last 10 versions of the file at ${file_key}..
+
+echo
+echo Executing:
+cat << EOF
+aws s3api list-object-versions --bucket ${aws_bucket} --prefix ${file_key} --max-items 10
+EOF
+echo
+versions=$(aws s3api list-object-versions --bucket ${aws_bucket} --prefix ${file_key} --max-items 10)
+
+
+echo Select which versions to compare by entering their serial number....
+for i in {0..9}
+do
+    echo $(($i+1)). $( jq -r ".[\"Versions\"][$i][\"LastModified\"]" <<< "${versions}" )
+    echo '--------------------------------------------------------'
+done
+
+echo Enter first version number
+read v1
+echo Enter second version number
+read v2
+
+version_1=$( jq -r ".[\"Versions\"][(($v1-1))][\"VersionId\"]" <<< "${versions}" )
+version_2=$( jq -r ".[\"Versions\"][(($v2-1))][\"VersionId\"]" <<< "${versions}" )
+
+
+mkdir -p comparison_files
+
+echo Getting the latest version ${version_1} of the file at ${file_key}..
+echo
+echo Executing:
+cat << EOF
+aws s3api get-object --bucket ${aws_bucket} --key ${file_key} --version-id ${version_1} comparison_files/${version_1}
+EOF
+aws s3api get-object --bucket ${aws_bucket} --key ${file_key} --version-id ${version_1} comparison_files/${version_1} > /dev/null
+
+echo
+echo Getting older version ${version_2} of the file at ${file_key}..
+echo
+echo Executing:
+cat << EOF
+aws s3api get-object --bucket ${aws_bucket} --key ${file_key} --version-id ${version_2} comparison_files/${version_2}
+EOF
+aws s3api get-object --bucket ${aws_bucket} --key ${file_key} --version-id ${version_2} comparison_files/${version_2} > /dev/null
+
+echo
+echo Comparing the different versions.
+echo If no differences are found, nothing will be shown
+colordiff --unified comparison_files/${version_2} comparison_files/${version_1}
