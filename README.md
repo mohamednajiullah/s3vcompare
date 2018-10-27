@@ -19,7 +19,7 @@ This shell script allows the user to compare different versions of a S3 Object.
  
  Please load these into your terminal manually or using a tool like direnv
  
-##Running the script
+## Running the script
 
 The script can be run on the terminal directly as ./s3vcompare.
 

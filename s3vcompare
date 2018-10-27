@@ -35,9 +35,11 @@ EOF
 echo
 versions=$(aws s3api list-object-versions --bucket ${aws_bucket} --prefix ${file_key} --max-items 10)
 
+available_items=$( jq -r ".[\"Versions\"] | length" <<< "${versions}" )
+
 
 echo Select which versions to compare by entering their serial number....
-for i in {0..9}
+for (( i=0; i < $available_items; i++ ))
 do
     echo $(($i+1)). $( jq -r ".[\"Versions\"][$i][\"LastModified\"]" <<< "${versions}" )
     echo '--------------------------------------------------------'
